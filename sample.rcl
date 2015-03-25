@@ -1,4 +1,7 @@
 (print 123)
 (print 234)
-(print r0)
+(let bar 666)
+(let foo bar)
+(print foo)
+(print bar)
 (halt)

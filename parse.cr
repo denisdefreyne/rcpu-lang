@@ -299,30 +299,46 @@ end
 abstract class Tree
 end
 
-class PrintNumTree < Tree
-  getter num
+class PrintTree < Tree
+  getter reg
 
-  def initialize(@num)
+  def initialize(@reg)
   end
 
   def to_s
-    "<PrintNum #{num}>"
-  end
-end
-
-class PrintRegTree < Tree
-  getter identifier
-
-  def initialize(@identifier)
-  end
-
-  def to_s
-    "<PrintReg #{identifier}>"
+    "<PrintReg #{reg}>"
   end
 end
 
 class HaltTree < Tree
+  def to_s
+    "<Halt>"
   end
+end
+
+class LoadImmTree < Tree
+  getter identifier
+  getter value
+
+  def initialize(@identifier, @value)
+  end
+
+  def to_s
+    "<LoadImm #{identifier} #{value}>"
+  end
+end
+
+class MovTree < Tree
+  getter target_identifier
+  getter source_identifier
+
+  def initialize(@target_identifier, @source_identifier)
+  end
+
+  def to_s
+    "<Mov #{target_identifier} #{source_identifier}>"
+  end
+end
 
 # Translates from sexps into trees
 class Translator
@@ -331,6 +347,8 @@ class Translator
   def initialize(@input)
     @index = 0
     @trees = [] of Tree
+    @vars = {} of String => Int32 # Name to register
+    @cur_reg = 0
   end
 
   def run
@@ -341,38 +359,81 @@ class Translator
   end
 
   def handle_sexp(sexp)
-    first = sexp.args[0]
-    case first
-    when Token
-      case first.content
-      when "halt"
-        @trees << HaltTree.new
-      when "print"
-        # TODO: handle strings too
-        # TODO: handle all formats of ints
-        if sexp.args.size != 2
-          raise "Invalid number of arguments for print"
+    a0 = sexp.args[0]
+    unless a0.is_a?(Token)
+      raise "Cannot have sexp as a0 item in a sexp"
+    end
+
+    case a0.content
+    when "halt"
+      @trees << HaltTree.new
+    when "let"
+      # (let var var)
+      # (let var num)
+      if sexp.args.size != 3
+        raise "Invalid number of arguments for let"
+      end
+
+      a1 = sexp.args[1]
+      a2 = sexp.args[2]
+      unless a1.is_a?(Token)
+        raise "Invalid type for argument 2 for let"
+      end
+      unless a2.is_a?(Token)
+        raise "Invalid type for argument 3 for let"
+      end
+      unless a1.kind == :identifier
+        raise "Invalid type for argument 2 for let"
+      end
+
+      if @vars.has_key?(a1.content)
+        raise "Cannot reassign #{a1.content}"
+      end
+      @vars[a1.content] = new_reg
+
+      case a2.kind
+      when :identifier
+        unless @vars.has_key?(a2.content)
+          raise "Undefined var #{a2.content}"
         end
 
-        second = sexp.args[1]
-        case second
-        when Token
-          case second.kind
-          when :number
-            @trees << PrintNumTree.new(second.content.to_i)
-          when :identifier
-            @trees << PrintRegTree.new(second.content)
-          else
-            raise "Invalid argument 2 for print"
-          end
-        else
-          raise "Invalid type for argument 2 for print"
-        end
+        @trees << MovTree.new(@vars[a1.content], @vars[a2.content])
+      when :number
+        # TODO: handle all formats of ints
+        @trees << LoadImmTree.new(@vars[a1.content], a2.content.to_i)
       else
-        raise "Unexpected sexp type: #{first.content}"
+        raise "Invalid type for argument 3 for let"
       end
-    else
-      raise "Cannot have sexp as first item in a sexp"
+    when "print"
+      # (print num)
+      # (print var)
+      if sexp.args.size != 2
+        raise "Invalid number of arguments for print"
+      end
+
+      a1 = sexp.args[1]
+      unless a1.is_a?(Token)
+        raise "Invalid type for argument 2 for print"
+      end
+
+      case a1.kind
+      when :number
+        # TODO: handle all formats of ints
+        # TODO: assign to reg and then print
+        reg = new_reg
+        name = "_tmp_" + @trees.size.to_s
+        @vars[name] = reg
+        @trees << LoadImmTree.new(reg, a1.content.to_i)
+        @trees << PrintTree.new(reg)
+      when :identifier
+        unless @vars.has_key?(a1.content)
+          raise "Undefined var #{a1.content}"
+        end
+
+        @trees << PrintTree.new(@vars[a1.content])
+      else
+        raise "Invalid argument 2 for print"
+      end
     end
   end
 
@@ -382,6 +443,10 @@ class Translator
 
   def current_sexp
     @input[@index]
+  end
+
+  def new_reg
+    @cur_reg.tap { @cur_reg += 1 }
   end
 end
 
@@ -403,12 +468,12 @@ class AssemblyWriter
 
   def handle_tree(tree)
     case tree
-    when PrintNumTree
-      reg = new_reg
-      @lines << "\tli r#{reg}, #{tree.num}"
-      @lines << "\tprn r#{reg}"
-    when PrintRegTree
-      @lines << "\tprn #{tree.identifier}"
+    when LoadImmTree
+      @lines << "\tli r#{tree.identifier}, #{tree.value}"
+    when MovTree
+      @lines << "\tmov r#{tree.target_identifier}, #{tree.source_identifier}"
+    when PrintTree
+      @lines << "\tprn r#{tree.reg}"
     when HaltTree
       @lines << "\thalt"
     else
@@ -438,25 +503,14 @@ input = File.read(ARGV[0])
 
 lexer = Lexer.new(input)
 lexer.run
-p lexer.tokens
-puts "----------"
-puts
 
 parser = Parser.new(lexer.tokens)
 parser.run
-puts "Statements:"
-parser.statements.each { |s| puts s.to_s }
-puts "----------"
-puts
+parser.statements.each { |s| puts "#" + s.to_s }
 
 translator = Translator.new(parser.statements)
 translator.run
-puts "Trees:"
-translator.trees.each { |t| puts t.to_s }
-puts "----------"
-puts
 
 writer = AssemblyWriter.new(translator.trees)
 writer.run
-puts "Assembly:"
 writer.lines.each { |l| puts l }
