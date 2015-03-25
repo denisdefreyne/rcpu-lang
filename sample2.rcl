@@ -1,0 +1,9 @@
+(foo)
+(foo bar 1 "hello" (donkey))
+
+(fn gcd (r0 r1)
+  (while (neq r1 0)
+    (let r2 r1)
+    (let r1 (mod r0 r1))
+    (let r0 r2))
+  r0)
