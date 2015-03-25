@@ -471,7 +471,7 @@ class AssemblyWriter
     when LoadImmTree
       @lines << "\tli r#{tree.identifier}, #{tree.value}"
     when MovTree
-      @lines << "\tmov r#{tree.target_identifier}, #{tree.source_identifier}"
+      @lines << "\tmov r#{tree.target_identifier}, r#{tree.source_identifier}"
     when PrintTree
       @lines << "\tprn r#{tree.reg}"
     when HaltTree
