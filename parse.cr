@@ -405,7 +405,7 @@ class AssemblyWriter
     case tree
     when PrintNumTree
       reg = new_reg
-      @lines << "\taddi r#{reg}, #{tree.num}, 0"
+      @lines << "\tli r#{reg}, #{tree.num}"
       @lines << "\tprn r#{reg}"
     when PrintRegTree
       @lines << "\tprn #{tree.identifier}"
