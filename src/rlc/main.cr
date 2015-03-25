@@ -295,6 +295,7 @@ end
 # (print string)
 # (print number)
 # (halt)
+# (if cond body-true body-false)
 
 abstract class Tree
 end
@@ -340,7 +341,55 @@ class MovTree < Tree
   end
 end
 
+class CmpTree < Tree
+  getter a
+  getter b
+
+  def initialize(@a, @b)
+  end
+
+  def to_s
+    "<Cmp #{a} #{b}>"
+  end
+end
+
+class JeiTree < Tree
+  getter name
+
+  def initialize(@name)
+  end
+
+  def to_s
+    "<JeiTree #{name}>"
+  end
+end
+
+class JiTree < Tree
+  getter name
+
+  def initialize(@name)
+  end
+
+  def to_s
+    "<JiTree #{name}>"
+  end
+end
+
+class LabelTree < Tree
+  getter name
+
+  def initialize(@name)
+  end
+
+  def to_s
+    "<LabelTree #{name}>"
+  end
+end
+
 # Translates from sexps into trees
+#
+# TODO: rename Tree to UnboundInstruction
+# TODO: Reuse tree to simplify AST (move sexps in separate vars etc)
 class Translator
   getter trees
 
@@ -349,6 +398,7 @@ class Translator
     @trees = [] of Tree
     @vars = {} of String => Int32 # Name to register
     @cur_reg = 0
+    @cur_name_id = 0
   end
 
   def run
@@ -365,8 +415,46 @@ class Translator
     end
 
     case a0.content
+    when "seq"
+      sexp.args[1..-1].each do |sub_sexp|
+        unless sub_sexp.is_a?(Sexp)
+          raise "Can only have sexps in seq"
+        end
+
+        handle_sexp(sub_sexp)
+      end
     when "halt"
       @trees << HaltTree.new
+    when "if-eq"
+      # (if-eq a b body)
+      # TODO: also add false body
+      # TODO: add more than just if-eq
+      if sexp.args.size != 4
+        raise "Invalid number of arguments for if-eq"
+      end
+
+      a1 = sexp.args[1]
+      a2 = sexp.args[2]
+      a3 = sexp.args[3]
+      unless a1.is_a?(Token)
+        raise "Invalid type for argument 2 for if-eq"
+      end
+      unless a2.is_a?(Token)
+        raise "Invalid type for argument 3 for if-eq"
+      end
+      unless a3.is_a?(Sexp)
+        raise "Invalid type for argument 4 for if-eq"
+      end
+
+      label_true = new_name
+      label_final = new_name
+
+      @trees << CmpTree.new(@vars[a1.content], @vars[a2.content])
+      @trees << JeiTree.new(label_true)
+      @trees << JiTree.new(label_final)
+      @trees << LabelTree.new(label_true)
+      handle_sexp(a3)
+      @trees << LabelTree.new(label_final)
     when "let"
       # (let var var)
       # (let var num)
@@ -421,7 +509,7 @@ class Translator
         # TODO: handle all formats of ints
         # TODO: assign to reg and then print
         reg = new_reg
-        name = "_tmp_" + @trees.size.to_s
+        name = new_name
         @vars[name] = reg
         @trees << LoadImmTree.new(reg, a1.content.to_i)
         @trees << PrintTree.new(reg)
@@ -443,6 +531,10 @@ class Translator
 
   def current_sexp
     @input[@index]
+  end
+
+  def new_name
+    "tmp_#{@cur_name_id}".tap { @cur_name_id += 1 }
   end
 
   def new_reg
@@ -468,10 +560,19 @@ class AssemblyWriter
 
   def handle_tree(tree)
     case tree
+    when LabelTree
+      @lines << "#{tree.name}:"
     when LoadImmTree
       @lines << "\tli r#{tree.identifier}, #{tree.value}"
     when MovTree
       @lines << "\tmov r#{tree.target_identifier}, r#{tree.source_identifier}"
+    when CmpTree
+      # TODO: CmpiTree
+      @lines << "\tcmp r#{tree.a}, r#{tree.b}"
+    when JeiTree
+      @lines << "\tjei @#{tree.name}"
+    when JiTree
+      @lines << "\tji @#{tree.name}"
     when PrintTree
       @lines << "\tprn r#{tree.reg}"
     when HaltTree
