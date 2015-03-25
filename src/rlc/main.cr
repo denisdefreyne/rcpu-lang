@@ -495,7 +495,7 @@ class AssemblyWriter
 end
 
 if ARGV.size != 1
-  puts "usage: #{$0} [filename"
+  puts "usage: #{$0} [filename]"
   exit 1
 end
 
