@@ -4,8 +4,8 @@
 (let foo bar)
 (print foo)
 (print bar)
-(halt)
 (if-eq foo bar
   (seq
     (print foo)
     (print bar)))
+(halt)
