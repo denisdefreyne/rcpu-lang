@@ -1,5 +1,6 @@
 require "./lexer"
 require "./parser"
+require "./analyser"
 require "./ir_translator"
 require "./instruction_selector"
 require "./assembly_writer"
@@ -17,7 +18,12 @@ lexer.run
 parser = Parser::Parser.new(lexer.tokens)
 parser.run
 
-translator = IRTranslator::IRTranslator.new(parser.statements)
+# TODO: rename statements to expressions
+analyser = Analyser::Analyser.new(parser.statements)
+analyser.run
+analyser.exprs.each { |e| p e }
+
+translator = IRTranslator::IRTranslator.new(analyser.exprs)
 translator.run
 
 selector = InstructionSelector::InstructionSelector.new(translator.trees)

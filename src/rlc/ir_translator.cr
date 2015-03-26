@@ -30,25 +30,12 @@
 
 module IRTranslator
   abstract class IRTree
-    def to_s
-      String.build { |io| fmt(io, 0) }
-    end
-
-    def fmt(io, indent = 0)
-      indent.times { io << "  " }
-      io << "???"
-    end
   end
 
   class ConstTree < IRTree
     getter value
 
     def initialize(@value : Int32)
-    end
-
-    def fmt(io, indent = 0)
-      indent.times { io << "  " }
-      io << "<Const #{value.to_s}>"
     end
   end
 
@@ -57,24 +44,12 @@ module IRTranslator
 
     def initialize(@value : String)
     end
-
-    def fmt(io, indent = 0)
-      indent.times { io << "  " }
-      io << "<Name #{value.to_s}>"
-    end
   end
 
   class LabelTree < IRTree
     getter name
 
     def initialize(@name : String)
-    end
-
-    def fmt(io, indent = 0)
-      indent.times { io << "  " }
-      io << "<Label\n"
-      name.fmt(io, indent + 1)
-      io << ">"
     end
   end
 
@@ -83,20 +58,9 @@ module IRTranslator
 
     def initialize(@tree : IRTree)
     end
-
-    def fmt(io, indent = 0)
-      indent.times { io << "  " }
-      io << "<Print\n"
-      tree.fmt(io, indent + 1)
-      io << ">"
-    end
   end
 
   class HaltTree < IRTree
-    def fmt(io, indent = 0)
-      indent.times { io << "  " }
-      io << "<Halt>"
-    end
   end
 
   class SeqTree < IRTree
@@ -105,15 +69,6 @@ module IRTranslator
 
     def initialize(@a : IRTree, @b : IRTree)
     end
-
-    def fmt(io, indent = 0)
-      indent.times { io << "  " }
-      io << "<Seq\n"
-      a.fmt(io, indent + 1)
-      io << "\n"
-      b.fmt(io, indent + 1)
-      io << ">"
-    end
   end
 
   class AssignTree < IRTree
@@ -121,15 +76,6 @@ module IRTranslator
     getter tree
 
     def initialize(@name : NameTree, @tree : IRTree)
-    end
-
-    def fmt(io, indent = 0)
-      indent.times { io << "  " }
-      io << "<Assign\n"
-      name.fmt(io, indent + 1)
-      io << "\n"
-      tree.fmt(io, indent + 1)
-      io << ">"
     end
   end
 
@@ -143,80 +89,43 @@ module IRTranslator
 
     def run
       until @index >= @input.size
-        @trees << translate_sexp(current_sexp)
+        @trees << translate_expr(current_expr)
         advance
       end
     end
 
-    def translate_sexp(sexp : Parser::Sexp)
-      case sexp.name
-      when "seq"
-        # (seq a b)
-
-        # TODO: allow arbitrary number
-        if sexp.args.size != 2
-          raise "Invalid number of arguments for seq"
-        end
-
-        a0 = sexp.args[0]
-        a1 = sexp.args[1]
-
-        unless a0.is_a?(Parser::Sexp)
-          raise "Invalid type for argument 0 for seq"
-        end
-
-        unless a1.is_a?(Parser::Sexp)
-          raise "Invalid type for argument 1 for seq"
-        end
-
+    def translate_expr(expr : Analyser::Expr)
+      case expr
+      when Analyser::SeqExpr
         SeqTree.new(
-          translate_sexp(a0),
-          translate_sexp(a1))
-      when "halt"
+          translate_expr(expr.a),
+          translate_expr(expr.b))
+      when Analyser::HaltExpr
         HaltTree.new
-      when "print"
-        # (print var)
-        # (print num)
+      when Analyser::PrintExpr
+        subexpr = expr.expr
 
-        if sexp.args.size != 1
-          raise "Invalid number of arguments for let"
-        end
-
-        a0 = sexp.args[0]
-
-        case a0
-        when Parser::IdentifierSexpArg
-          PrintTree.new(NameTree.new(a0.value))
-        when Parser::NumSexpArg
-          PrintTree.new(ConstTree.new(a0.value))
+        case subexpr
+        when Analyser::VarExpr
+          PrintTree.new(NameTree.new(subexpr.name))
+        when Analyser::ConstExpr
+          PrintTree.new(ConstTree.new(subexpr.value))
         else
           raise "Invalid type for argument 0 for let"
         end
-      when "let"
-        # (let var var)
-        # (let var num)
+      when Analyser::AssignExpr
+        subexpr = expr.expr
 
-        if sexp.args.size != 2
-          raise "Invalid number of arguments for let"
-        end
-
-        a0 = sexp.args[0]
-        a1 = sexp.args[1]
-
-        unless a0.is_a?(Parser::IdentifierSexpArg)
-          raise "Invalid type for argument 0 for let"
-        end
-
-        case a1
-        when Parser::IdentifierSexpArg
-          AssignTree.new(NameTree.new(a0.value), NameTree.new(a1.value))
-        when Parser::NumSexpArg
-          AssignTree.new(NameTree.new(a0.value), ConstTree.new(a1.value))
+        case subexpr
+        when Analyser::VarExpr
+          AssignTree.new(NameTree.new(expr.name), NameTree.new(subexpr.name))
+        when Analyser::ConstExpr
+          AssignTree.new(NameTree.new(expr.name), ConstTree.new(subexpr.value))
         else
           raise "Invalid type for argument 3 for let"
         end
       else
-        raise "Unrecognised sexp name #{sexp.name}"
+        raise "Unrecognised expr #{expr}"
       end
     end
 
@@ -224,7 +133,7 @@ module IRTranslator
       @index += 1
     end
 
-    def current_sexp
+    def current_expr
       @input[@index]
     end
   end
