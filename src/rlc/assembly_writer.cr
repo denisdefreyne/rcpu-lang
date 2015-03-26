@@ -4,7 +4,8 @@ module AssemblyWriter
 
     def initialize(@input)
       @index = 0
-      @cur_var = 0
+      @cur_reg = 0
+      @names = {} of String => Int32
       @lines = [] of String
     end
 
@@ -22,11 +23,15 @@ module AssemblyWriter
       when InstructionSelector::LabelInstr
         @lines << "#{instr.name.to_s}:"
       when InstructionSelector::PrintInstr
-        @lines << "\tprn #{instr.name.value}"
+        reg = find_reg(instr.name.value)
+        @lines << "\tprn r#{reg}"
       when InstructionSelector::LoadImmInstr
-        @lines << "\tli #{instr.name.value}, #{instr.value}"
+        reg = find_reg(instr.name.value)
+        @lines << "\tli r#{reg}, #{instr.value}"
       when InstructionSelector::MovInstr
-        @lines << "\tmov #{instr.name.value}, #{instr.value.value}"
+        reg0 = find_reg(instr.name.value)
+        reg1 = find_reg(instr.value.value)
+        @lines << "\tmov r#{reg0}, r#{reg1}"
       else
         raise "Unknown instr: #{instr.to_s}"
       end
@@ -38,6 +43,15 @@ module AssemblyWriter
 
     def current_instr
       @input[@index]
+    end
+
+    def find_reg(name)
+      if @names.has_key?(name)
+        @names[name]
+      else
+        @names[name] = @cur_reg
+        @cur_reg.tap { @cur_reg += 1 }
+      end
     end
   end
 end
