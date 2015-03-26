@@ -3,7 +3,6 @@
 (print 0100)
 (print 0b100)
 (print 234)
-(print foo)
 (let bar 666)
 (let foo bar)
 (print bar)

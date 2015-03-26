@@ -26,10 +26,10 @@ module AssemblyWriter
         reg = find_reg(instr.name.value)
         @lines << "\tprn r#{reg}"
       when InstructionSelector::LoadImmInstr
-        reg = find_reg(instr.name.value)
+        reg = find_or_create_reg(instr.name.value)
         @lines << "\tli r#{reg}, #{instr.value}"
       when InstructionSelector::MovInstr
-        reg0 = find_reg(instr.name.value)
+        reg0 = find_or_create_reg(instr.name.value)
         reg1 = find_reg(instr.value.value)
         @lines << "\tmov r#{reg0}, r#{reg1}"
       else
@@ -46,6 +46,14 @@ module AssemblyWriter
     end
 
     def find_reg(name)
+      if @names.has_key?(name)
+        @names[name]
+      else
+        raise "Unknown name: #{name}"
+      end
+    end
+
+    def find_or_create_reg(name)
       if @names.has_key?(name)
         @names[name]
       else
