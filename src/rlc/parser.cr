@@ -1,13 +1,13 @@
 module Parser
   class Sexp
+    getter name
     getter args
 
-    def initialize(args)
-      @args = args
+    def initialize(@name, @args)
     end
 
     def to_s
-      "(#{args.map { |a| a.to_s }.join(' ')})"
+      "(#{name}#{args.map { |a| " " + a.to_s }.join})"
     end
   end
 
@@ -45,7 +45,7 @@ module Parser
         end
       end
       consume(:rparen)
-      Sexp.new([id] + args)
+      Sexp.new(id.content, args)
     end
 
     def consume_all_optional_whitespace

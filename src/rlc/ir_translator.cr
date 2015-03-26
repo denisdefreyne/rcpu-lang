@@ -119,14 +119,9 @@ class IRTranslator
   end
 
   def handle_sexp(sexp)
-    a0 = sexp.args[0]
-    unless a0.is_a?(Lexer::Token)
-      raise "Cannot have sexp as a0 item in a sexp"
-    end
-
-    case a0.content
+    case sexp.name
     when "seq"
-      sexp.args[1..-1].each do |sub_sexp|
+      sexp.args.each do |sub_sexp|
         unless sub_sexp.is_a?(Parser::Sexp)
           raise "Can only have sexps in seq"
         end
@@ -139,13 +134,13 @@ class IRTranslator
       # (if-eq a b body)
       # TODO: also add false body
       # TODO: add more than just if-eq
-      if sexp.args.size != 4
+      if sexp.args.size != 3
         raise "Invalid number of arguments for if-eq"
       end
 
-      a1 = sexp.args[1]
-      a2 = sexp.args[2]
-      a3 = sexp.args[3]
+      a1 = sexp.args[0]
+      a2 = sexp.args[1]
+      a3 = sexp.args[2]
       unless a1.is_a?(Lexer::Token)
         raise "Invalid type for argument 2 for if-eq"
       end
@@ -168,12 +163,12 @@ class IRTranslator
     when "let"
       # (let var var)
       # (let var num)
-      if sexp.args.size != 3
+      if sexp.args.size != 2
         raise "Invalid number of arguments for let"
       end
 
-      a1 = sexp.args[1]
-      a2 = sexp.args[2]
+      a1 = sexp.args[0]
+      a2 = sexp.args[1]
       unless a1.is_a?(Lexer::Token)
         raise "Invalid type for argument 2 for let"
       end
@@ -205,11 +200,11 @@ class IRTranslator
     when "print"
       # (print num)
       # (print var)
-      if sexp.args.size != 2
+      if sexp.args.size != 1
         raise "Invalid number of arguments for print"
       end
 
-      a1 = sexp.args[1]
+      a1 = sexp.args[0]
       unless a1.is_a?(Lexer::Token)
         raise "Invalid type for argument 2 for print"
       end
