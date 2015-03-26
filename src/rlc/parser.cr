@@ -84,7 +84,6 @@ module Parser
           when /\A0b/
             NumSexpArg.new(candidate.content[2..-1].to_i(2))
           when /\A0/
-            # TODO: fix octal parsing
             NumSexpArg.new(candidate.content[1..-1].to_i(8))
           else
             NumSexpArg.new(candidate.content.to_i)

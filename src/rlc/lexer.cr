@@ -159,25 +159,52 @@ module Lexer
             state = :zero
           when '1' .. '9'
             @current_token.append_char(char)
-            state = :body
+            state = :body_dec
           else
             raise "consume_number: inconsistent lexer state"
           end
         when :zero
           case char
-          when 'x', 'b'
+          when 'x'
             @current_token.append_char(char)
-            state = :body
-          when '0' .. '9'
-            raise "consume_number: lexer error before #{char} at #{@index}"
+            state = :body_hex
+          when 'b'
+            @current_token.append_char(char)
+            state = :body_bin
+          when '0' .. '7'
+            unread_char
+            state = :body_oct
           else
             unread_char
             return
           end
-        when :body
+        when :body_dec
           case char
-            # TODO: be more strict
+          when '0' .. '9'
+            @current_token.append_char(char)
+          else
+            unread_char
+            return
+          end
+        when :body_hex
+          case char
           when '0' .. '9', 'a' .. 'f', 'A' .. 'F'
+            @current_token.append_char(char)
+          else
+            unread_char
+            return
+          end
+        when :body_bin
+          case char
+          when '0' .. '1'
+            @current_token.append_char(char)
+          else
+            unread_char
+            return
+          end
+        when :body_oct
+          case char
+          when '0' .. '7'
             @current_token.append_char(char)
           else
             unread_char
