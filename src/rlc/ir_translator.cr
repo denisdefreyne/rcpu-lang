@@ -1,105 +1,137 @@
-# (call name arg0 …)
-# (while cond body)
-# (fn name (arg0 …) body)
-# (let name body)
-# (print string)
-# (print number)
-# (halt)
-# (if cond body-true body-false)
+# abstract syntax:
+#   (call name arg0 …)
+#   (while cond body)
+#   (fn name (arg0 …) body)
+#   (let name body)
+#   (print string)
+#   (print number)
+#   (halt)
+#   (if cond body-true body-false)
+#   (eq a b)
+#   (neq a b)
+#   (gt a b)
+
+# IR expressions:
+#   const(int)
+#   const(string)
+#   name(string)
+#   temp(string)
+#   label(string)
+#   mem(exp)
+#   call(name, exp1, …)
+# IR statements:
+#   halt()
+#   print(exp)
+#   eval(exp)
+#   move(temp, exp)
+#   jump(name)
+#   cjump(oper, exp1, exp2, name_true, name_false)
+#   seq(exp1, exp2)
 
 abstract class IRTree
-end
-
-class PrintTree < IRTree
-  getter reg
-
-  def initialize(@reg)
-  end
-
   def to_s
-    "<Print #{reg}>"
+    String.build { |io| fmt(io, 0) }
+  end
+
+  def fmt(io, indent = 0)
+    indent.times { io << "  " }
+    io << "???"
   end
 end
 
-class HaltTree < IRTree
-  def to_s
-    "<Halt>"
-  end
-end
-
-class LoadImmTree < IRTree
-  getter identifier
+class ConstTree < IRTree
   getter value
 
-  def initialize(@identifier, @value)
+  def initialize(@value : Int32)
   end
 
-  def to_s
-    "<LoadImm #{identifier} #{value}>"
-  end
-end
-
-class MovTree < IRTree
-  getter target_identifier
-  getter source_identifier
-
-  def initialize(@target_identifier, @source_identifier)
-  end
-
-  def to_s
-    "<Mov #{target_identifier} #{source_identifier}>"
+  def fmt(io, indent = 0)
+    indent.times { io << "  " }
+    io << "<Const #{value.to_s}>"
   end
 end
 
-class CmpTree < IRTree
-  getter a
-  getter b
+class NameTree < IRTree
+  getter value
 
-  def initialize(@a, @b)
+  def initialize(@value : String)
   end
 
-  def to_s
-    "<Cmp #{a} #{b}>"
-  end
-end
-
-class JeiTree < IRTree
-  getter name
-
-  def initialize(@name)
-  end
-
-  def to_s
-    "<Jei #{name}>"
-  end
-end
-
-class JiTree < IRTree
-  getter name
-
-  def initialize(@name)
-  end
-
-  def to_s
-    "<Ji #{name}>"
+  def fmt(io, indent = 0)
+    indent.times { io << "  " }
+    io << "<Name #{value.to_s}>"
   end
 end
 
 class LabelTree < IRTree
   getter name
 
-  def initialize(@name)
+  def initialize(@name : String)
   end
 
-  def to_s
-    "<Label #{name}>"
+  def fmt(io, indent = 0)
+    indent.times { io << "  " }
+    io << "<Label\n"
+    name.fmt(io, indent + 1)
+    io << ">"
   end
 end
 
-# Translates from sexps into trees
-#
-# TODO: rename Tree to UnboundInstruction
-# TODO: Reuse tree to simplify AST (move sexps in separate vars etc)
+class PrintTree < IRTree
+  getter tree
+
+  def initialize(@tree : IRTree)
+  end
+
+  def fmt(io, indent = 0)
+    indent.times { io << "  " }
+    io << "<Print\n"
+    tree.fmt(io, indent + 1)
+    io << ">"
+  end
+end
+
+class HaltTree < IRTree
+  def fmt(io, indent = 0)
+    indent.times { io << "  " }
+    io << "<Halt>"
+  end
+end
+
+class SeqTree < IRTree
+  getter a
+  getter b
+
+  def initialize(@a : IRTree, @b : IRTree)
+  end
+
+  def fmt(io, indent = 0)
+    indent.times { io << "  " }
+    io << "<Seq\n"
+    a.fmt(io, indent + 1)
+    io << "\n"
+    b.fmt(io, indent + 1)
+    io << ">"
+  end
+end
+
+class AssignTree < IRTree
+  getter name
+  getter tree
+
+  def initialize(@name : NameTree, @tree : IRTree)
+  end
+
+  def fmt(io, indent = 0)
+    indent.times { io << "  " }
+    io << "<Assign\n"
+    name.fmt(io, indent + 1)
+    io << "\n"
+    tree.fmt(io, indent + 1)
+    io << ">"
+  end
+end
+
 class IRTranslator
   getter trees
 
@@ -113,121 +145,80 @@ class IRTranslator
 
   def run
     until @index >= @input.size
-      handle_sexp(current_sexp)
+      @trees << translate_sexp(current_sexp)
       advance
     end
   end
 
-  def handle_sexp(sexp)
+  def translate_sexp(sexp : Parser::Sexp)
     case sexp.name
     when "seq"
-      sexp.args.each do |sub_sexp|
-        unless sub_sexp.is_a?(Parser::Sexp)
-          raise "Can only have sexps in seq"
-        end
+      # (seq a b)
 
-        handle_sexp(sub_sexp)
+      # TODO: allow arbitrary number
+      if sexp.args.size != 2
+        raise "Invalid number of arguments for seq"
       end
+
+      a0 = sexp.args[0]
+      a1 = sexp.args[1]
+
+      unless a0.is_a?(Parser::Sexp)
+        raise "Invalid type for argument 0 for seq"
+      end
+
+      unless a1.is_a?(Parser::Sexp)
+        raise "Invalid type for argument 1 for seq"
+      end
+
+      SeqTree.new(
+        translate_sexp(a0),
+        translate_sexp(a1))
     when "halt"
-      @trees << HaltTree.new
-    when "if-eq"
-      # (if-eq a b body)
-      # TODO: also add false body
-      # TODO: add more than just if-eq
-      if sexp.args.size != 3
-        raise "Invalid number of arguments for if-eq"
+      HaltTree.new
+    when "print"
+      # (print var)
+      # (print num)
+
+      if sexp.args.size != 1
+        raise "Invalid number of arguments for let"
       end
 
-      a1 = sexp.args[0]
-      a2 = sexp.args[1]
-      a3 = sexp.args[2]
+      a0 = sexp.args[0]
 
-      case a1
+      case a0
       when Parser::IdentifierSexpArg
+        PrintTree.new(NameTree.new(a0.value))
+      when Parser::NumSexpArg
+        PrintTree.new(ConstTree.new(a0.value))
       else
-        raise "blah"
+        raise "Invalid type for argument 0 for let"
       end
-
-      case a2
-      when Parser::IdentifierSexpArg
-      else
-        raise "blah"
-      end
-
-      case a3
-      when Parser::Sexp
-      else
-        raise "blah"
-      end
-
-      label_true = new_name
-      label_final = new_name
-
-      @trees << CmpTree.new(@vars[a1.value], @vars[a2.value])
-      @trees << JeiTree.new(label_true)
-      @trees << JiTree.new(label_final)
-      @trees << LabelTree.new(label_true)
-      handle_sexp(a3)
-      @trees << LabelTree.new(label_final)
     when "let"
       # (let var var)
       # (let var num)
+
       if sexp.args.size != 2
         raise "Invalid number of arguments for let"
       end
 
-      a1 = sexp.args[0]
-      a2 = sexp.args[1]
+      a0 = sexp.args[0]
+      a1 = sexp.args[1]
+
+      unless a0.is_a?(Parser::IdentifierSexpArg)
+        raise "Invalid type for argument 0 for let"
+      end
 
       case a1
       when Parser::IdentifierSexpArg
-        if @vars.has_key?(a1.value)
-          raise "Cannot reassign #{a1.value}"
-        end
-        # FIXME: #to_s should not be necessary here
-        @vars[a1.value.to_s] = new_reg
-
-        case a2
-        when Parser::IdentifierSexpArg
-          unless @vars.has_key?(a2.value)
-            raise "Undefined var #{a2.value}"
-          end
-
-          @trees << MovTree.new(@vars[a1.value], @vars[a2.value])
-        when Parser::NumSexpArg
-          # TODO: handle all formats of ints
-          @trees << LoadImmTree.new(@vars[a1.value], a2.value)
-        else
-          raise "Invalid type for argument 3 for let"
-        end
-      else
-        raise "First argument to let must be identifier"
-      end
-    when "print"
-      # (print num)
-      # (print var)
-      if sexp.args.size != 1
-        raise "Invalid number of arguments for print"
-      end
-
-      a1 = sexp.args[0]
-
-      case a1
+        AssignTree.new(NameTree.new(a0.value), NameTree.new(a1.value))
       when Parser::NumSexpArg
-        reg = new_reg
-        name = new_name
-        @vars[name] = reg
-        @trees << LoadImmTree.new(reg, a1.value)
-        @trees << PrintTree.new(reg)
-      when Parser::IdentifierSexpArg
-        unless @vars.has_key?(a1.value)
-          raise "Undefined var #{a1.value}"
-        end
-
-        @trees << PrintTree.new(@vars[a1.value])
+        AssignTree.new(NameTree.new(a0.value), ConstTree.new(a1.value))
       else
-        raise "Invalid argument 2 for print"
+        raise "Invalid type for argument 3 for let"
       end
+    else
+      raise "Unrecognised sexp name #{sexp.name}"
     end
   end
 
@@ -239,11 +230,7 @@ class IRTranslator
     @input[@index]
   end
 
-  def new_name
-    "tmp_#{@cur_name_id}".tap { @cur_name_id += 1 }
-  end
-
-  def new_reg
-    @cur_reg.tap { @cur_reg += 1 }
-  end
+  # def new_name
+  #   NameTree.new("n#{@cur_name_id}").tap { @cur_name_id += 1 }
+  # end
 end

@@ -7,8 +7,7 @@
 (let foo bar)
 (print foo)
 (print bar)
-(if-eq foo bar
-  (seq
-    (print foo)
-    (print bar)))
+(seq
+  (print foo)
+  (print bar))
 (halt)

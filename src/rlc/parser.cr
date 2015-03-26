@@ -12,19 +12,27 @@ module Parser
   end
 
   abstract class SexpArg
-    getter value
-
-    def initialize(@value)
-    end
   end
 
   class IdentifierSexpArg < SexpArg
+    getter value
+
+    def initialize(@value : String)
+    end
   end
 
   class NumSexpArg < SexpArg
+    getter value
+
+    def initialize(@value : Int32)
+    end
   end
 
   class StringSexpArg < SexpArg
+    getter value
+
+    def initialize(@value : String)
+    end
   end
 
   class Parser
@@ -89,7 +97,7 @@ module Parser
             NumSexpArg.new(candidate.content.to_i)
           end
         when :string
-          StringSexpArg.new(candidate.content)
+          StringSexpArg.new(candidate.content.to_s)
         when :lparen
           unread_token
           consume_sexp
