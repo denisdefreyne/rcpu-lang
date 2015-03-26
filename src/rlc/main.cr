@@ -21,7 +21,7 @@ parser.run
 # TODO: rename statements to expressions
 analyser = Analyser::Analyser.new(parser.statements)
 analyser.run
-analyser.exprs.each { |e| p e }
+# analyser.exprs.each { |e| p e }
 
 translator = IRTranslator::IRTranslator.new(analyser.exprs)
 translator.run

@@ -32,6 +32,33 @@ module AssemblyWriter
         reg0 = find_or_create_reg(instr.name.value)
         reg1 = find_reg(instr.value.value)
         @lines << "\tmov r#{reg0}, r#{reg1}"
+      when InstructionSelector::CmpInstr
+        reg0 = find_or_create_reg(instr.a.value)
+        a = instr.a
+        b = instr.b
+        case b
+        when InstructionSelector::Name
+          reg1 = find_reg(b.value)
+          @lines << "\tcmp r#{reg0}, r#{reg1}"
+        when Int32
+          @lines << "\tcmpi r#{reg0}, #{b}"
+        else
+          raise "cmp must be name or int32"
+        end
+      when InstructionSelector::JumpInstr
+        # TODO: allow calculated jumps
+        @lines << "\tji @#{instr.target.value}"
+      when InstructionSelector::CndJumpInstr
+        mnemnoic =
+          case instr.op
+          when :eq
+            "e"
+          else
+            raise "Unknown op #{instr.op}"
+          end
+
+        # TODO: allow calculated jumps
+        @lines << "\tj#{mnemnoic}i @#{instr.target.value}"
       else
         raise "Unknown instr: #{instr.to_s}"
       end

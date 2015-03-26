@@ -65,6 +65,41 @@ module InstructionSelector
     end
   end
 
+  class CmpInstr < Instruction
+    getter a
+    getter b
+
+    def initialize(@a, @b)
+    end
+
+    def to_s
+      "[Cmp #{@a.to_s} #{@b.to_s}]"
+    end
+  end
+
+  class CndJumpInstr < Instruction
+    getter op
+    getter target
+
+    def initialize(@op, @target)
+    end
+
+    def to_s
+      "[CndJump #{@op.to_s} #{@target.to_s}]"
+    end
+  end
+
+  class JumpInstr < Instruction
+    getter target
+
+    def initialize(@target)
+    end
+
+    def to_s
+      "[Jump #{@target.to_s}]"
+    end
+  end
+
   class InstructionSelector
     getter instrs
 
@@ -77,7 +112,6 @@ module InstructionSelector
     def run
       until @index >= @input.size
         handle_tree(current_tree).each do |instr|
-          p instr
           @instrs << instr
         end
         advance
@@ -103,6 +137,36 @@ module InstructionSelector
           ]
         else
           raise "Impossible subtree"
+        end
+      when IRTranslator::CndJumpTree
+        label_true  = new_tmp_name
+        label_false = new_tmp_name
+        label_done  = new_tmp_name
+        res = [] of Instruction
+        res << CndJumpInstr.new(:eq, label_true)
+        res << JumpInstr.new(label_false)
+        res << LabelInstr.new(label_true)
+        handle_tree(tree.body).each { |i| res << i }
+        res << JumpInstr.new(label_done)
+        res << LabelInstr.new(label_false)
+        # TODO: add false
+        res << JumpInstr.new(label_done)
+        res << LabelInstr.new(label_done)
+        res
+      when IRTranslator::CmpTree
+        a = tree.a
+        b = tree.b
+        unless a.is_a?(IRTranslator::RefTree)
+          raise "First arg for cmp can only be ref"
+        end
+
+        case b
+        when IRTranslator::ConstTree
+          [CmpInstr.new(Name.new("ref_#{a.ref}"), b.value)]
+        when IRTranslator::RefTree
+          [CmpInstr.new(Name.new("ref_#{a.ref}"), Name.new("ref_#{b.ref}"))]
+        else
+          raise "Second tree can be const and ref, but found neither"
         end
       when IRTranslator::AssignTree
         ref = tree.ref

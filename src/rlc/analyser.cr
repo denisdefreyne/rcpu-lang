@@ -7,6 +7,10 @@ module Analyser
 
     def initialize(@value : Int32)
     end
+
+    def inspect
+      "<Const #{value.inspect}>"
+    end
   end
 
   class VarExpr < Expr
@@ -55,6 +59,27 @@ module Analyser
 
     def inspect
       "<Assign #{ref.inspect} #{expr.inspect}>"
+    end
+  end
+
+  class IfExpr < Expr
+    OP_EQ  = :eq
+    OP_NEQ = :neq
+    OP_GT  = :gt
+    OP_GTE = :gte
+    OP_LT  = :lt
+    OP_LTE = :lte
+
+    getter op
+    getter a
+    getter b
+    getter body
+
+    def initialize(@op : Op, @a : Expr, @b : Expr, @body : Expr)
+    end
+
+    def inspect
+      "<If #{op} #{a.inspect} #{b.inspect} #{body.inspect}>"
     end
   end
 
@@ -211,6 +236,49 @@ module Analyser
         end
 
         HaltExpr.new
+      when "if"
+        # (if op a b body)
+
+        if sexp.args.size != 4
+          raise "Invalid number of arguments for if"
+        end
+
+        arg_op   = sexp.args[0]
+        arg_a    = sexp.args[1]
+        arg_b    = sexp.args[2]
+        arg_body = sexp.args[3]
+
+        # TODO: set op
+        op = :eq
+
+        a_expr =
+          case arg_a
+          when Parser::IdentifierSexpArg
+            right_ref = @envs[arg_a.value]
+            VarExpr.new(right_ref)
+          when Parser::NumSexpArg
+            ConstExpr.new(arg_a.value)
+          else
+            raise "Invalid type for argument 1 for if"
+          end
+
+        b_expr =
+          case arg_b
+          when Parser::IdentifierSexpArg
+            right_ref = @envs[arg_b.value]
+            VarExpr.new(right_ref)
+          when Parser::NumSexpArg
+            ConstExpr.new(arg_b.value)
+          else
+            raise "Invalid type for argument 2 for if"
+          end
+
+        unless arg_body.is_a?(Parser::Sexp)
+          raise "Invalid type for argument 3 for seq"
+        end
+        body_expr = analyse_sexp(arg_body)
+
+        IfExpr.new(op, a_expr, b_expr, body_expr)
       when "print"
         # (print var)
         # (print num)

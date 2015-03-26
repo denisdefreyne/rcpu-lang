@@ -79,6 +79,22 @@ module IRTranslator
     end
   end
 
+  class CmpTree < IRTree
+    getter a
+    getter b
+
+    def initialize(@a : IRTree, @b : IRTree)
+    end
+  end
+
+  class CndJumpTree < IRTree
+    getter op
+    getter body
+
+    def initialize(@op, @body : IRTree)
+    end
+  end
+
   class IRTranslator
     getter trees
 
@@ -96,12 +112,25 @@ module IRTranslator
 
     def translate_expr(expr : Analyser::Expr)
       case expr
+      # TODO: add RefTree and remove special cases in print/assign
+      when Analyser::ConstExpr
+        ConstTree.new(expr.value)
+      when Analyser::VarExpr
+        RefTree.new(expr.ref)
       when Analyser::SeqExpr
         SeqTree.new(
           translate_expr(expr.a),
           translate_expr(expr.b))
       when Analyser::HaltExpr
         HaltTree.new
+      when Analyser::IfExpr
+        SeqTree.new(
+          CmpTree.new(
+            translate_expr(expr.a),
+            translate_expr(expr.b)),
+          CndJumpTree.new(
+            expr.op,
+            translate_expr(expr.body)))
       when Analyser::PrintExpr
         subexpr = expr.expr
 
