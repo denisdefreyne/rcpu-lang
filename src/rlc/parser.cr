@@ -11,6 +11,22 @@ module Parser
     end
   end
 
+  abstract class SexpArg
+    getter value
+
+    def initialize(@value)
+    end
+  end
+
+  class IdentifierSexpArg < SexpArg
+  end
+
+  class NumSexpArg < SexpArg
+  end
+
+  class StringSexpArg < SexpArg
+  end
+
   class Parser
     getter statements
 
@@ -35,7 +51,7 @@ module Parser
     def consume_sexp
       consume(:lparen)
       id = consume(:identifier)
-      args = [] of Lexer::Token | Sexp
+      args = [] of Sexp | SexpArg
       loop do
         arg = try_consume_argument
         if arg
@@ -59,8 +75,13 @@ module Parser
         consume_all_optional_whitespace
         candidate = consume
         case candidate.kind
-        when :identifier, :number, :string
-          candidate
+        when :identifier
+          IdentifierSexpArg.new(candidate.content.to_s)
+        when :number
+          # TODO: parse num properly
+          NumSexpArg.new(candidate.content.to_i)
+        when :string
+          StringSexpArg.new(candidate.content)
         when :lparen
           unread_token
           consume_sexp

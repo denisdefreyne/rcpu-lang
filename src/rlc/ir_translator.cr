@@ -141,20 +141,29 @@ class IRTranslator
       a1 = sexp.args[0]
       a2 = sexp.args[1]
       a3 = sexp.args[2]
-      unless a1.is_a?(Lexer::Token)
-        raise "Invalid type for argument 2 for if-eq"
+
+      case a1
+      when Parser::IdentifierSexpArg
+      else
+        raise "blah"
       end
-      unless a2.is_a?(Lexer::Token)
-        raise "Invalid type for argument 3 for if-eq"
+
+      case a2
+      when Parser::IdentifierSexpArg
+      else
+        raise "blah"
       end
-      unless a3.is_a?(Parser::Sexp)
-        raise "Invalid type for argument 4 for if-eq"
+
+      case a3
+      when Parser::Sexp
+      else
+        raise "blah"
       end
 
       label_true = new_name
       label_final = new_name
 
-      @trees << CmpTree.new(@vars[a1.content], @vars[a2.content])
+      @trees << CmpTree.new(@vars[a1.value], @vars[a2.value])
       @trees << JeiTree.new(label_true)
       @trees << JiTree.new(label_final)
       @trees << LabelTree.new(label_true)
@@ -169,33 +178,30 @@ class IRTranslator
 
       a1 = sexp.args[0]
       a2 = sexp.args[1]
-      unless a1.is_a?(Lexer::Token)
-        raise "Invalid type for argument 2 for let"
-      end
-      unless a2.is_a?(Lexer::Token)
-        raise "Invalid type for argument 3 for let"
-      end
-      unless a1.kind == :identifier
-        raise "Invalid type for argument 2 for let"
-      end
 
-      if @vars.has_key?(a1.content)
-        raise "Cannot reassign #{a1.content}"
-      end
-      @vars[a1.content] = new_reg
-
-      case a2.kind
-      when :identifier
-        unless @vars.has_key?(a2.content)
-          raise "Undefined var #{a2.content}"
+      case a1
+      when Parser::IdentifierSexpArg
+        if @vars.has_key?(a1.value)
+          raise "Cannot reassign #{a1.value}"
         end
+        # FIXME: #to_s should not be necessary here
+        @vars[a1.value.to_s] = new_reg
 
-        @trees << MovTree.new(@vars[a1.content], @vars[a2.content])
-      when :number
-        # TODO: handle all formats of ints
-        @trees << LoadImmTree.new(@vars[a1.content], a2.content.to_i)
+        case a2
+        when Parser::IdentifierSexpArg
+          unless @vars.has_key?(a2.value)
+            raise "Undefined var #{a2.value}"
+          end
+
+          @trees << MovTree.new(@vars[a1.value], @vars[a2.value])
+        when Parser::NumSexpArg
+          # TODO: handle all formats of ints
+          @trees << LoadImmTree.new(@vars[a1.value], a2.value)
+        else
+          raise "Invalid type for argument 3 for let"
+        end
       else
-        raise "Invalid type for argument 3 for let"
+        raise "First argument to let must be identifier"
       end
     when "print"
       # (print num)
@@ -205,25 +211,20 @@ class IRTranslator
       end
 
       a1 = sexp.args[0]
-      unless a1.is_a?(Lexer::Token)
-        raise "Invalid type for argument 2 for print"
-      end
 
-      case a1.kind
-      when :number
-        # TODO: handle all formats of ints
-        # TODO: assign to reg and then print
+      case a1
+      when Parser::NumSexpArg
         reg = new_reg
         name = new_name
         @vars[name] = reg
-        @trees << LoadImmTree.new(reg, a1.content.to_i)
+        @trees << LoadImmTree.new(reg, a1.value)
         @trees << PrintTree.new(reg)
-      when :identifier
-        unless @vars.has_key?(a1.content)
-          raise "Undefined var #{a1.content}"
+      when Parser::IdentifierSexpArg
+        unless @vars.has_key?(a1.value)
+          raise "Undefined var #{a1.value}"
         end
 
-        @trees << PrintTree.new(@vars[a1.content])
+        @trees << PrintTree.new(@vars[a1.value])
       else
         raise "Invalid argument 2 for print"
       end
