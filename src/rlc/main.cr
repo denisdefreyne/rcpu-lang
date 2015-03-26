@@ -69,7 +69,7 @@ parser = Parser::Parser.new(lexer.tokens)
 parser.run
 parser.statements.each { |s| puts "#" + s.to_s }
 
-translator = IRTranslator.new(parser.statements)
+translator = IRTranslator::IRTranslator.new(parser.statements)
 translator.run
 translator.trees.each { |l| puts l.to_s }
 
