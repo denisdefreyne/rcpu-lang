@@ -89,9 +89,10 @@ module IRTranslator
 
   class CndJumpTree < IRTree
     getter op
-    getter body
+    getter body_true
+    getter body_false
 
-    def initialize(@op, @body : IRTree)
+    def initialize(@op, @body_true : IRTree, @body_false : IRTree | Nil)
     end
   end
 
@@ -124,13 +125,24 @@ module IRTranslator
       when Analyser::HaltExpr
         HaltTree.new
       when Analyser::IfExpr
+        true_tree = translate_expr(expr.body_true)
+
+        body_false = expr.body_false
+        false_tree =
+          if body_false
+            translate_expr(body_false)
+          else
+            nil
+          end
+
         SeqTree.new(
           CmpTree.new(
             translate_expr(expr.a),
             translate_expr(expr.b)),
           CndJumpTree.new(
             expr.op,
-            translate_expr(expr.body)))
+            true_tree,
+            false_tree))
       when Analyser::PrintExpr
         subexpr = expr.expr
 

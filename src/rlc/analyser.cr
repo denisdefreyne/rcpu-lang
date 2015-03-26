@@ -73,13 +73,14 @@ module Analyser
     getter op
     getter a
     getter b
-    getter body
+    getter body_true
+    getter body_false
 
-    def initialize(@op : Op, @a : Expr, @b : Expr, @body : Expr)
+    def initialize(@op : Op, @a : Expr, @b : Expr, @body_true : Expr, @body_false : Expr | Nil)
     end
 
     def inspect
-      "<If #{op} #{a.inspect} #{b.inspect} #{body.inspect}>"
+      "<If #{op} #{a.inspect} #{b.inspect} #{body_true.inspect} #{body_false.inspect}>"
     end
   end
 
@@ -239,14 +240,15 @@ module Analyser
       when "if"
         # (if op a b body)
 
-        if sexp.args.size != 4
+        if sexp.args.size < 4 || sexp.args.size > 5
           raise "Invalid number of arguments for if"
         end
 
-        arg_op   = sexp.args[0]
-        arg_a    = sexp.args[1]
-        arg_b    = sexp.args[2]
-        arg_body = sexp.args[3]
+        arg_op         = sexp.args[0]
+        arg_a          = sexp.args[1]
+        arg_b          = sexp.args[2]
+        arg_body_true  = sexp.args[3]
+        arg_body_false = sexp.args[4]
 
         # TODO: set op
         op = :eq
@@ -273,12 +275,23 @@ module Analyser
             raise "Invalid type for argument 2 for if"
           end
 
-        unless arg_body.is_a?(Parser::Sexp)
+        unless arg_body_true.is_a?(Parser::Sexp)
           raise "Invalid type for argument 3 for seq"
         end
-        body_expr = analyse_sexp(arg_body)
+        body_true_expr = analyse_sexp(arg_body_true)
 
-        IfExpr.new(op, a_expr, b_expr, body_expr)
+        body_false_expr =
+          if arg_body_false
+            unless arg_body_false.is_a?(Parser::Sexp)
+              raise "Invalid type for argument 4 for seq"
+            end
+
+            analyse_sexp(arg_body_false)
+          else
+            nil
+          end
+
+        IfExpr.new(op, a_expr, b_expr, body_true_expr, body_false_expr)
       when "print"
         # (print var)
         # (print num)

@@ -10,5 +10,7 @@
 (seq
   (print foo)
   (print bar))
-(if eq bar 666 (print 6666))
+(if eq bar 666
+  (print 1)
+  (print 2))
 (halt)

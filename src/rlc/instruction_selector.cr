@@ -146,10 +146,12 @@ module InstructionSelector
         res << CndJumpInstr.new(:eq, label_true)
         res << JumpInstr.new(label_false)
         res << LabelInstr.new(label_true)
-        handle_tree(tree.body).each { |i| res << i }
+        handle_tree(tree.body_true).each { |i| res << i }
         res << JumpInstr.new(label_done)
         res << LabelInstr.new(label_false)
-        # TODO: add false
+        if tree.body_false
+          handle_tree(tree.body_false).each { |i| res << i }
+        end
         res << JumpInstr.new(label_done)
         res << LabelInstr.new(label_done)
         res
