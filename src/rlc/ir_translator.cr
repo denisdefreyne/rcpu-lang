@@ -139,9 +139,6 @@ module IRTranslator
     def initialize(@input)
       @index = 0
       @trees = [] of IRTree
-      @vars = {} of String => Int32 # Name to register
-      @cur_reg = 0
-      @cur_name_id = 0
     end
 
     def run
@@ -230,9 +227,5 @@ module IRTranslator
     def current_sexp
       @input[@index]
     end
-
-    # def new_name
-    #   NameTree.new("n#{@cur_name_id}").tap { @cur_name_id += 1 }
-    # end
   end
 end
