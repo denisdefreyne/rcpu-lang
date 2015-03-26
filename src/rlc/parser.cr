@@ -78,8 +78,17 @@ module Parser
         when :identifier
           IdentifierSexpArg.new(candidate.content.to_s)
         when :number
-          # TODO: parse num properly
-          NumSexpArg.new(candidate.content.to_i)
+          case candidate.content
+          when /\A0x/
+            NumSexpArg.new(candidate.content[2..-1].to_i(16))
+          when /\A0b/
+            NumSexpArg.new(candidate.content[2..-1].to_i(2))
+          when /\A0/
+            # TODO: fix octal parsing
+            NumSexpArg.new(candidate.content[1..-1].to_i(8))
+          else
+            NumSexpArg.new(candidate.content.to_i)
+          end
         when :string
           StringSexpArg.new(candidate.content)
         when :lparen

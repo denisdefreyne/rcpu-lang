@@ -1,4 +1,6 @@
 (print 123)
+(print 0x100)
+(print 0b100)
 (print 234)
 (let bar 666)
 (let foo bar)
