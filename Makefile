@@ -4,7 +4,7 @@ SOURCES := $(shell find src -name '*.cr')
 all: rlc
 
 rlc: src/rlc/main.cr $(SOURCES)
-	crystal build --verbose $< -o $@
+	crystal build $< -o $@
 
 .PHONY: clean
 clean:

@@ -31,13 +31,13 @@ module InstructionSelector
   end
 
   class PrintInstr < Instruction
-    getter value
+    getter name
 
-    def initialize(@value : Name)
+    def initialize(@name : Name)
     end
 
     def to_s
-      "[Print #{@value.value.to_s}]"
+      "[Print #{@name.value.to_s}]"
     end
   end
 

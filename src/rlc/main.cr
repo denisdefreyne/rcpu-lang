@@ -2,6 +2,7 @@ require "./lexer"
 require "./parser"
 require "./ir_translator"
 require "./instruction_selector"
+require "./assembly_writer"
 
 if ARGV.size != 1
   puts "usage: #{$0} [filename]"
@@ -21,6 +22,10 @@ translator = IRTranslator::IRTranslator.new(parser.statements)
 translator.run
 translator.trees.each { |t| puts t.to_s }
 
-writer = InstructionSelector::InstructionSelector.new(translator.trees)
+selector = InstructionSelector::InstructionSelector.new(translator.trees)
+selector.run
+selector.instrs.each { |i| puts i.to_s }
+
+writer = AssemblyWriter::AssemblyWriter.new(selector.instrs)
 writer.run
-writer.instrs.each { |i| puts i.to_s }
+writer.lines.each { |l| puts l.to_s }
