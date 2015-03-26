@@ -13,3 +13,6 @@ The following is supported:
 * <code>(halt)</code>
 * <code>(seq <var>expr…</var>)</code>
 * <code>(scoped-seq <var>expr…</var>)</code>
+* <code>(if <var>op</var> <var>a</var> <var>b</var> <var>true-body</var> <var>false-body</var>)</code>
+
+`op` can only be `eq` at the moment.
