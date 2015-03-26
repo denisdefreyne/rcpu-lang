@@ -14,12 +14,20 @@ module Analyser
 
     def initialize(@ref : Int32)
     end
+
+    def inspect
+      "<Var #{ref.inspect}>"
+    end
   end
 
   class PrintExpr < Expr
     getter expr
 
     def initialize(@expr : Expr)
+    end
+
+    def inspect
+      "<Print #{expr.inspect}>"
     end
   end
 
@@ -32,6 +40,10 @@ module Analyser
 
     def initialize(@a : Expr, @b : Expr)
     end
+
+    def inspect
+      "<Seq #{a.inspect} #{b.inspect}>"
+    end
   end
 
   class AssignExpr < Expr
@@ -39,6 +51,10 @@ module Analyser
     getter expr
 
     def initialize(@ref : Int32, @expr : Expr)
+    end
+
+    def inspect
+      "<Assign #{ref.inspect} #{expr.inspect}>"
     end
   end
 
@@ -124,8 +140,7 @@ module Analyser
     def analyse_sexp(sexp : Parser::Sexp)
       case sexp.name
       when "seq"
-        # TODO: allow arbitrary number
-        if sexp.args.size != 2
+        if sexp.args.size < 2
           raise "Invalid number of arguments for seq"
         end
 
@@ -140,32 +155,56 @@ module Analyser
           raise "Invalid type for argument 1 for seq"
         end
 
-        SeqExpr.new(
-          analyse_sexp(a0),
-          analyse_sexp(a1))
-      when "scope"
-        # TODO: allow arbitrary number
-        if sexp.args.size != 2
-          raise "Invalid number of arguments for scope"
+        seq_expr =
+          SeqExpr.new(
+            analyse_sexp(a0),
+            analyse_sexp(a1))
+
+        sexp.args[2..-1].inject(seq_expr) do |seq_expr, arg|
+          unless arg.is_a?(Parser::Sexp)
+            raise "Invalid type for argument for seq"
+          end
+
+          SeqExpr.new(
+            seq_expr,
+            analyse_sexp(arg))
+        end
+      when "scoped-seq"
+        if sexp.args.size < 2
+          raise "Invalid number of arguments for seq"
         end
 
         a0 = sexp.args[0]
         a1 = sexp.args[1]
 
         unless a0.is_a?(Parser::Sexp)
-          raise "Invalid type for argument 0 for scope"
+          raise "Invalid type for argument 0 for seq"
         end
 
         unless a1.is_a?(Parser::Sexp)
-          raise "Invalid type for argument 1 for scope"
+          raise "Invalid type for argument 1 for seq"
         end
 
         @envs = EnvStack.new(@envs)
-        s = SeqExpr.new(
-          analyse_sexp(a0),
-          analyse_sexp(a1))
+
+        seq_expr =
+          SeqExpr.new(
+            analyse_sexp(a0),
+            analyse_sexp(a1))
+
+        seq_expr_2 = sexp.args[2..-1].inject(seq_expr) do |seq_expr, arg|
+          unless arg.is_a?(Parser::Sexp)
+            raise "Invalid type for argument for seq"
+          end
+
+          SeqExpr.new(
+            seq_expr,
+            analyse_sexp(arg))
+        end
+
         @envs = @envs.prev!
-        s
+
+        seq_expr_2
       when "halt"
         if sexp.args.size != 0
           raise "Invalid number of arguments for halt"

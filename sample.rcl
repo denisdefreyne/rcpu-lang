@@ -6,10 +6,17 @@
 (let bar 666)
 (let foo bar)
 (print bar)
-(scope
+(scoped-seq
   (let asdf 432)
+  (let fdsa 333)
+  (print fdsa)
+  (print fdsa)
   (print asdf))
 (seq
   (print foo)
+  (print bar)
+  (print bar)
+  (print bar)
+  (print bar)
   (print bar))
 (halt)
