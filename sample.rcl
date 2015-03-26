@@ -6,6 +6,9 @@
 (let bar 666)
 (let foo bar)
 (print bar)
+(scope
+  (let asdf 432)
+  (print asdf))
 (seq
   (print foo)
   (print bar))

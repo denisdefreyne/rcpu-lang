@@ -86,6 +86,19 @@ module Analyser
       raise "Unknown name #{key}"
     end
 
+    def has_prev?
+      !@prev.nil?
+    end
+
+    def prev!
+      prev = @prev
+      if prev
+        prev
+      else
+        raise "Cannot get prev of empty stack"
+      end
+    end
+
     def []=(key : String, value : Int32)
       @env[key] = value
     end
@@ -130,6 +143,29 @@ module Analyser
         SeqExpr.new(
           analyse_sexp(a0),
           analyse_sexp(a1))
+      when "scope"
+        # TODO: allow arbitrary number
+        if sexp.args.size != 2
+          raise "Invalid number of arguments for scope"
+        end
+
+        a0 = sexp.args[0]
+        a1 = sexp.args[1]
+
+        unless a0.is_a?(Parser::Sexp)
+          raise "Invalid type for argument 0 for scope"
+        end
+
+        unless a1.is_a?(Parser::Sexp)
+          raise "Invalid type for argument 1 for scope"
+        end
+
+        @envs = EnvStack.new(@envs)
+        s = SeqExpr.new(
+          analyse_sexp(a0),
+          analyse_sexp(a1))
+        @envs = @envs.prev!
+        s
       when "halt"
         if sexp.args.size != 0
           raise "Invalid number of arguments for halt"
