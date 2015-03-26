@@ -120,14 +120,14 @@ class IRTranslator
 
   def handle_sexp(sexp)
     a0 = sexp.args[0]
-    unless a0.is_a?(Token)
+    unless a0.is_a?(Lexer::Token)
       raise "Cannot have sexp as a0 item in a sexp"
     end
 
     case a0.content
     when "seq"
       sexp.args[1..-1].each do |sub_sexp|
-        unless sub_sexp.is_a?(Sexp)
+        unless sub_sexp.is_a?(Parser::Sexp)
           raise "Can only have sexps in seq"
         end
 
@@ -146,13 +146,13 @@ class IRTranslator
       a1 = sexp.args[1]
       a2 = sexp.args[2]
       a3 = sexp.args[3]
-      unless a1.is_a?(Token)
+      unless a1.is_a?(Lexer::Token)
         raise "Invalid type for argument 2 for if-eq"
       end
-      unless a2.is_a?(Token)
+      unless a2.is_a?(Lexer::Token)
         raise "Invalid type for argument 3 for if-eq"
       end
-      unless a3.is_a?(Sexp)
+      unless a3.is_a?(Parser::Sexp)
         raise "Invalid type for argument 4 for if-eq"
       end
 
@@ -174,10 +174,10 @@ class IRTranslator
 
       a1 = sexp.args[1]
       a2 = sexp.args[2]
-      unless a1.is_a?(Token)
+      unless a1.is_a?(Lexer::Token)
         raise "Invalid type for argument 2 for let"
       end
-      unless a2.is_a?(Token)
+      unless a2.is_a?(Lexer::Token)
         raise "Invalid type for argument 3 for let"
       end
       unless a1.kind == :identifier
@@ -210,7 +210,7 @@ class IRTranslator
       end
 
       a1 = sexp.args[1]
-      unless a1.is_a?(Token)
+      unless a1.is_a?(Lexer::Token)
         raise "Invalid type for argument 2 for print"
       end
 

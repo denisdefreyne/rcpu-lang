@@ -62,10 +62,10 @@ end
 
 input = File.read(ARGV[0])
 
-lexer = Lexer.new(input)
+lexer = Lexer::Lexer.new(input)
 lexer.run
 
-parser = Parser.new(lexer.tokens)
+parser = Parser::Parser.new(lexer.tokens)
 parser.run
 parser.statements.each { |s| puts "#" + s.to_s }
 
