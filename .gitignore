@@ -1,4 +1,4 @@
 *.rcs
 *.rcb
 .crystal
-rlc
+/rlc
