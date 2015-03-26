@@ -10,9 +10,9 @@ module Analyser
   end
 
   class VarExpr < Expr
-    getter name
+    getter ref
 
-    def initialize(@name : String)
+    def initialize(@ref : Int32)
     end
   end
 
@@ -35,10 +35,59 @@ module Analyser
   end
 
   class AssignExpr < Expr
-    getter name
+    getter ref
     getter expr
 
-    def initialize(@name : String, @expr : Expr)
+    def initialize(@ref : Int32, @expr : Expr)
+    end
+  end
+
+  class Env
+    def initialize
+      @wrapped = {} of String => Int32
+    end
+
+    def has_key?(key : String)
+      @wrapped.has_key?(key)
+    end
+
+    def [](key : String)
+      if @wrapped.has_key?(key)
+        @wrapped[key]
+      else
+        raise "Unknown name #{key}"
+      end
+    end
+
+    def []=(key : String, value : Int32)
+      if has_key?(key)
+        raise "Key #{key} already taken"
+      else
+        @wrapped[key] = value
+      end
+    end
+  end
+
+  class EnvStack
+    def initialize(@prev = nil)
+      @env = Env.new
+    end
+
+    def [](key : String)
+      if @env.has_key?(key)
+        return @env[key]
+      end
+
+      prev = @prev
+      if prev
+        return prev[key]
+      end
+
+      raise "Unknown name #{key}"
+    end
+
+    def []=(key : String, value : Int32)
+      @env[key] = value
     end
   end
 
@@ -48,6 +97,8 @@ module Analyser
     def initialize(@input)
       @index = 0
       @exprs = [] of Expr
+      @envs = EnvStack.new
+      @ref_id = 0
     end
 
     def run
@@ -97,7 +148,8 @@ module Analyser
 
         case a0
         when Parser::IdentifierSexpArg
-          PrintExpr.new(VarExpr.new(a0.value))
+          right_ref = @envs[a0.value]
+          PrintExpr.new(VarExpr.new(right_ref))
         when Parser::NumSexpArg
           PrintExpr.new(ConstExpr.new(a0.value))
         else
@@ -118,11 +170,14 @@ module Analyser
           raise "Invalid type for argument 0 for let"
         end
 
+        @envs[a0.value] = new_ref
+
         case a1
         when Parser::IdentifierSexpArg
-          AssignExpr.new(a0.value, VarExpr.new(a1.value))
+          right_ref = @envs[a1.value]
+          AssignExpr.new(@envs[a0.value], VarExpr.new(right_ref))
         when Parser::NumSexpArg
-          AssignExpr.new(a0.value, ConstExpr.new(a1.value))
+          AssignExpr.new(@envs[a0.value], ConstExpr.new(a1.value))
         else
           raise "Invalid type for argument 3 for let"
         end
@@ -137,6 +192,10 @@ module Analyser
 
     def current_sexp
       @input[@index]
+    end
+
+    def new_ref
+      @ref_id.tap { @ref_id += 1 }
     end
   end
 end

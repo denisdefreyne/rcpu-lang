@@ -39,10 +39,10 @@ module IRTranslator
     end
   end
 
-  class NameTree < IRTree
-    getter value
+  class RefTree < IRTree
+    getter ref
 
-    def initialize(@value : String)
+    def initialize(@ref : Int32)
     end
   end
 
@@ -72,10 +72,10 @@ module IRTranslator
   end
 
   class AssignTree < IRTree
-    getter name
+    getter ref
     getter tree
 
-    def initialize(@name : NameTree, @tree : IRTree)
+    def initialize(@ref : Int32, @tree : IRTree)
     end
   end
 
@@ -107,7 +107,7 @@ module IRTranslator
 
         case subexpr
         when Analyser::VarExpr
-          PrintTree.new(NameTree.new(subexpr.name))
+          PrintTree.new(RefTree.new(subexpr.ref))
         when Analyser::ConstExpr
           PrintTree.new(ConstTree.new(subexpr.value))
         else
@@ -118,9 +118,9 @@ module IRTranslator
 
         case subexpr
         when Analyser::VarExpr
-          AssignTree.new(NameTree.new(expr.name), NameTree.new(subexpr.name))
+          AssignTree.new(expr.ref, RefTree.new(subexpr.ref))
         when Analyser::ConstExpr
-          AssignTree.new(NameTree.new(expr.name), ConstTree.new(subexpr.value))
+          AssignTree.new(expr.ref, ConstTree.new(subexpr.value))
         else
           raise "Invalid type for argument 3 for let"
         end

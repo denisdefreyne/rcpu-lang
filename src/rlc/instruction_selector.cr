@@ -77,6 +77,7 @@ module InstructionSelector
     def run
       until @index >= @input.size
         handle_tree(current_tree).each do |instr|
+          p instr
           @instrs << instr
         end
         advance
@@ -92,26 +93,25 @@ module InstructionSelector
       when IRTranslator::PrintTree
         subtree = tree.tree
         case subtree
-        when IRTranslator::NameTree
-          # FIXME: reuse name? (symbolic names should be assigned elsewhere)
-          [PrintInstr.new(Name.new(subtree.value))]
+        when IRTranslator::RefTree
+          [PrintInstr.new(Name.new("ref_#{subtree.ref}"))]
         when IRTranslator::ConstTree
-          var = new_name
+          name = new_tmp_name
           [
-            LoadImmInstr.new(var, subtree.value),
-            PrintInstr.new(var),
+            LoadImmInstr.new(name, subtree.value),
+            PrintInstr.new(name),
           ]
         else
           raise "Impossible subtree"
         end
       when IRTranslator::AssignTree
-        name = tree.name.value
+        ref = tree.ref
         subtree = tree.tree
         case subtree
-        when IRTranslator::NameTree
-          [MovInstr.new(Name.new(name), Name.new(subtree.value))]
+        when IRTranslator::RefTree
+          [MovInstr.new(Name.new("ref_#{ref}"), Name.new("ref_#{subtree.ref}"))]
         when IRTranslator::ConstTree
-          [LoadImmInstr.new(Name.new(name), subtree.value)]
+          [LoadImmInstr.new(Name.new("ref_#{ref}"), subtree.value)]
         else
           raise "Impossible subtree"
         end
@@ -129,8 +129,8 @@ module InstructionSelector
       @index += 1
     end
 
-    def new_name
-      Name.new("name_#{@cur_var}").tap { @cur_var += 1 }
+    def new_tmp_name
+      Name.new("tmp_#{@cur_var}").tap { @cur_var += 1 }
     end
 
     def current_tree
